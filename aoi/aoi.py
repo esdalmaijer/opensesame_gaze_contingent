@@ -120,7 +120,9 @@ class aoi(item.item):
 		self._rx = numpy.array(blnkarray, copy=True) # right x border
 		self._ty = numpy.array(blnkarray, copy=True) # top y border
 		self._by = numpy.array(blnkarray, copy=True) # bottom y border
-		self._namelist = self.aoidict.keys()
+		self._namelist = numpy.array(self.aoidict.keys())
+		self._aoicount = numpy.zeros(len(self._namelist))
+		self._notaoicount = 0
 		
 		for aoinr in range(0,len(self._namelist)):
 			x, y, w, h = self.aoidict[self._namelist[aoinr]]
@@ -140,23 +142,22 @@ class aoi(item.item):
 		True
 		"""
 		
-		# DEBUG #
-		print("run phase")
-#		print self.experiment.aoidict
-#		print self.aoidict
-		# # # # #
-		
 		stop = False
 		t0 = self.time()
 		
 		while not stop:
-			# get gaze position
-			gx, gy = self.experiment.eyetracker.sample()
 			
-			# CHECK IF GAZEPOS IS IN AOI
-			xina = (self._lx < gx) == (self._rx > gx)
-			yina = (self._by < gy) == (self._ty > gy)
-#			inaoi = ((xina == True) == (yina==True)) # TODO: fix this shit!
+			# wait for fixation
+			fx, fy = self.experiment.eyetracker.wait_for_fixation_start()
+			
+			# check if fixpos is in an AOI
+			xina = (self._lx < fx) == (self._rx > fx) # fixation between x borders
+			yina = (self._by < fy) == (self._ty > fy) # fixation between y borders
+			self._aoicount[xina&yina] += 1 # add one to the count of every fixated AOI
+			
+			# if no AOI is hit
+			if sum(xina&yina) == 0:
+				self._notaoicount += 1
 			
 			# response
 			response, t1 = self.kb.get_key()
