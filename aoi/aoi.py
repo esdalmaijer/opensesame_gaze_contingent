@@ -82,7 +82,7 @@ class aoi(item.item):
 		"""
 		
 		self.item_type = u"aoi"
-		self.spname = u''
+		self.spname = u'welcome'
 		self.aoiname = u"AOI_0"
 		self.aoidict = {}
 		self.aoidictstr = str(self.aoidict)
@@ -219,9 +219,9 @@ class qtaoi(aoi, qtplugin.qtplugin):
 
 		"""Initialize the controls"""
 
-		self.lock = True
+		self.lock = False
 		qtplugin.qtplugin.init_edit_widget(self, False)
-		self.add_line_edit_control("spname", "Sketchpad name", tooltip= \
+		self.add_line_edit_control("spname", "Sketchpad", tooltip= \
 			"The name of the sketchpad for which the AOIs apply")
 		self.add_line_edit_control("aoiname", "AOI name", tooltip= \
 			"The name of the new AOI", default="aoi_%d" % self.aoinr)
@@ -291,9 +291,9 @@ class qtaoi(aoi, qtplugin.qtplugin):
 		self.bgbrush.setStyle(QtCore.Qt.SolidPattern)
 		self.scene.setBackgroundBrush(self.bgbrush)
 		# draw sketchpad
-		self.drawn_sketchpad = False
-		if self.get(u'spname') in self.experiment.items:
-			self.add_sketchpad(self.experiment.items[self.get(u'spname')])
+		if hasattr(self, u'spname'):
+			if self.spname in self.experiment.items:
+				self.add_sketchpad(self.experiment.items[self.spname])
 		
 		# AOI image properties
 		self.font = QtGui.QFont("sans", 12, QtGui.QFont.Normal, False) # fontfamily, str; pointsize, int; weight, QFont.Normal/Bold; italic, bool
@@ -369,10 +369,14 @@ class qtaoi(aoi, qtplugin.qtplugin):
 		# clear scene
 		self.scene.clear()
 		# draw sketchpad
-		if self.get(u'spname') in self.experiment.items:
-			self.add_sketchpad(self.experiment.items[self.get(u'spname')])
+		if hasattr(self, u'spname'):
+			if self.spname in self.experiment.items:
+				self.add_sketchpad(self.experiment.items[self.spname])
+			else:
+				warning = self.scene.addText(u"sketchpad '%s' not found" % self.spname, self.font)
+				warning.setDefaultTextColor(QtGui.QColor(255,0,0))
 		# draw AOIs
-		exec("self.aoidict = %s" % self.get("aoidictstr"))
+		exec("self.aoidict = %s" % self.get(u'aoidictstr'))
 		for aoiname in self.aoidict.keys():
 			x, y, w, h = self.aoidict[aoiname]
 			self.update_color()
@@ -478,7 +482,6 @@ class qtaoi(aoi, qtplugin.qtplugin):
 					print "Could not find", item["type"]
 			except:
 				print "Error processing %s" % str(item)
-		self.drawn_sketchpad = True
 
 	def rect(self, x, y, w, h, pen, brush):
 
