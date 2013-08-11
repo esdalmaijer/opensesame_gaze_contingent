@@ -83,6 +83,7 @@ class aoi(item.item):
 		
 		self.item_type = u"aoi"
 		self.spname = u'welcome'
+		self.timeout = 5000
 		self.aoiname = u"AOI_0"
 		self.aoidict = {}
 		self.aoidictstr = str(self.aoidict)
@@ -115,8 +116,14 @@ class aoi(item.item):
 			raise exceptions.runtime_error( \
 				u"Please connect to the eyetracker using the the eyetracker_calibrate plugin before using the AOI plugin")
 		
+		# timeout
+		if type(self.get(u'timeout')) == int:
+			self.notimeout = False
+		else:
+			self.notimeout = True
+		
 		# canvas
-		self.cv = openexp.canvas.canvas()
+		self.cv = openexp.canvas.canvas(self.experiment)
 		self.cv.copy(self.experiment.items[self.get(u'spname')].canvas)
 		
 		# keyboard
@@ -161,7 +168,7 @@ class aoi(item.item):
 			
 			if not fixating:
 				# wait for fixation
-				fx, fy = self.experiment.eyetracker.wait_for_fixation_start()
+				ft0, (fx, fy) = self.experiment.eyetracker.wait_for_fixation_start()
 				fixating = True
 				
 				# check if fixpos is in an AOI
@@ -173,15 +180,21 @@ class aoi(item.item):
 				if sum(xina&yina) == 0:
 					self._notaoicount += 1
 			else:
-				self.experiment.eyetracker.wait_for_fixation_end()
+				ft1, pos = self.experiment.eyetracker.wait_for_fixation_end()
 				fixating = False
 			
 			# response
-			response, t1 = self.kb.get_key()
+			if self.timeout == 'keypress':
+				response, t1 = self.kb.get_key()
+				resptime = t1-t0
+				stop = True
 
 			# timeout
-			if (self.time() - t0 > self.timeout and not self.notimeout) or (response != None):
-				stop = True
+			else:
+				if self.experiment.time() - t0 > self.timeout and not self.notimeout:
+					response = None
+					resptime = None
+					stop = True
 		
 		# handle variables
 		for aoi in range(0,len(self._namelist)):
@@ -189,7 +202,7 @@ class aoi(item.item):
 			self.experiment.set(varname,self._aoicount[aoi])
 		self.experiment.set(u'fixcount_notAOI', self._notaoicount)
 		self.experiment.set(u'response', response)
-		self.experiment.set(u'response_time', t1-t0)
+		self.experiment.set(u'response_time', resptime)
 		
 		return True
 		
@@ -223,6 +236,8 @@ class qtaoi(aoi, qtplugin.qtplugin):
 		qtplugin.qtplugin.init_edit_widget(self, False)
 		self.add_line_edit_control("spname", "Sketchpad", tooltip= \
 			"The name of the sketchpad for which the AOIs apply")
+		self.add_line_edit_control("timeout", "Timeout", tooltip= \
+			"The amount of time the sketchpad is shown, registering AOI fixations")
 		self.add_line_edit_control("aoiname", "AOI name", tooltip= \
 			"The name of the new AOI", default="aoi_%d" % self.aoinr)
 		self.add_spinbox_control("x", "X position", 0, 10000, suffix=' px', \
